@@ -27,30 +27,6 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Redirect unauthenticated users to login
-  if (!user && pathname !== '/' && !pathname.startsWith('/login') && !pathname.startsWith('/organizations') && !pathname.startsWith('/events')) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  if (user) {
-    const role = user.user_metadata?.role as string | undefined
-
-    // Redirect authenticated users away from login
-    if (pathname === '/login') {
-      if (role === 'ADMIN') return NextResponse.redirect(new URL('/admin', request.url))
-      if (role === 'ORGANIZER') return NextResponse.redirect(new URL('/organizer', request.url))
-      return NextResponse.redirect(new URL('/student', request.url))
-    }
-
-    // Guard role-based routes
-    if (pathname.startsWith('/admin') && role !== 'ADMIN') {
-      return NextResponse.redirect(new URL('/student', request.url))
-    }
-    if (pathname.startsWith('/organizer') && role !== 'ORGANIZER' && role !== 'ADMIN') {
-      return NextResponse.redirect(new URL('/student', request.url))
-    }
-  }
-
   return supabaseResponse
 }
 

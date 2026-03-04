@@ -22,27 +22,7 @@ export const supabase: SupabaseClient = createClient(
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        storage: {
-          getItem: (key) => {
-            if (typeof document === "undefined") return null;
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${key}=`);
-            if (parts.length === 2)
-              return parts.pop()?.split(";").shift() || null;
-            return null;
-          },
-          setItem: (key, value) => {
-            if (typeof document === "undefined") return;
-            // Only use Secure flag on HTTPS connections
-            const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
-            const secureFlag = isSecure ? "; Secure" : "";
-            document.cookie = `${key}=${value}; path=/; max-age=31536000; SameSite=Lax${secureFlag}`;
-          },
-          removeItem: (key) => {
-            if (typeof document === "undefined") return;
-            document.cookie = `${key}=; path=/; max-age=0`;
-          },
-        },
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
       },
       db: {
         schema: 'public', // Explicitly set schema

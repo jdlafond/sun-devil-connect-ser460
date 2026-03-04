@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { signInUser, getRoleRedirect } from '@/src/lib/supabase/auth/auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -11,14 +12,9 @@ export default function LoginPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    const res = await fetch('/api/auth', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-    const data = await res.json()
-    if (!res.ok) return setError(data.error)
-    router.refresh()
+    const result = await signInUser(email, password)
+    if (!result.success) return setError(result.message)
+    router.push(await getRoleRedirect())
   }
 
   return (

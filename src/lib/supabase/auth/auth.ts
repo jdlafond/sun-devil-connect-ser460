@@ -32,3 +32,13 @@ export async function signOutUser() {
   if (error) return { success: false, message: error.message }
   return { success: true }
 }
+
+export async function getRoleRedirect(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return '/login'
+  const { data: profile } = await supabase.from('Users').select('role').eq('uuid', user.id).single()
+  const role = profile?.role
+  if (role === 'ADMIN') return '/admin'
+  if (role === 'ORGANIZER') return '/organizer'
+  return '/student'
+}

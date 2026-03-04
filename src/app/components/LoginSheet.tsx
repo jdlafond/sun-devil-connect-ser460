@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { theme } from '@/src/styles/theme'
-import { signInUser } from '@/src/lib/supabase/auth/auth'
+import { signInUser, getRoleRedirect } from '@/src/lib/supabase/auth/auth'
 
 export default function LoginSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter()
@@ -16,7 +16,7 @@ export default function LoginSheet({ open, onClose }: { open: boolean; onClose: 
     const result = await signInUser(email, password)
     if (!result.success) return setError(result.message)
     onClose()
-    router.push('/student')
+    router.push(await getRoleRedirect())
   }
 
   return (
