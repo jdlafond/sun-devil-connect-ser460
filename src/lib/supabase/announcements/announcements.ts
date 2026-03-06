@@ -22,6 +22,26 @@ export async function getAnnouncementsByOrg(orgId: string): Promise<Announcement
 export async function createAnnouncement(announcement: Omit<Announcement, 'id' | 'created_at'>): Promise<Announcement> {
   const { data, error } = await supabase.from('announcements').insert(announcement).select().single()
   if (error) throw error
+
+  // Notify all org members
+  const { data: members } = await supabase
+    .from('organization_members')
+    .select('user_id')
+    .eq('org_id', announcement.org_id)
+    .neq('user_id', announcement.author_user_id)
+
+  if (members && members.length > 0) {
+    await supabase.from('notifications').insert(
+      members.map(m => ({
+        user_id: m.user_id,
+        type: 'ANNOUNCEMENT',
+        title: announcement.title,
+        message: announcement.content,
+        data: { org_id: announcement.org_id, announcement_id: data.id },
+      }))
+    )
+  }
+
   return data
 }
 

@@ -1,63 +1,47 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { OrganizationApplication, ContentFlag } from '@/models'
+import AdminShell from '../components/AdminShell'
+import { theme } from '@/src/styles/theme'
+import { getFlags } from '@/src/lib/supabase/flags/flags'
+import { getOrganizationApplications } from '@/src/lib/supabase/applications/applications'
+import { getOrganizations } from '@/src/lib/supabase/organizations/organizations'
 
 export default function AdminDashboard() {
-  const [applications, setApplications] = useState<OrganizationApplication[]>([])
-  const [flags, setFlags] = useState<ContentFlag[]>([])
+  const [stats, setStats] = useState({ orgs: 0, pendingApps: 0, openFlags: 0 })
 
   useEffect(() => {
-    fetch('/api/applications').then(r => r.json()).then(setApplications)
-    fetch('/api/flags').then(r => r.json()).then(setFlags)
+    Promise.all([
+      getOrganizations(),
+      getOrganizationApplications(),
+      getFlags('OPEN'),
+    ]).then(([orgs, apps, flags]) => {
+      setStats({
+        orgs: orgs.length,
+        pendingApps: apps.filter(a => a.state === 'PENDING').length,
+        openFlags: flags.length,
+      })
+    }).catch(() => {})
   }, [])
 
-  async function reviewApplication(id: string, state: 'APPROVED' | 'REJECTED') {
-    await fetch('/api/applications', {
-      method: 'PATCH',
-      body: JSON.stringify({ id, state }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-    setApplications(prev => prev.map(a => a.id === id ? { ...a, state } : a))
-  }
-
-  async function resolveFlag(id: string, decisionSummary: string) {
-    await fetch('/api/flags', {
-      method: 'PATCH',
-      body: JSON.stringify({ id, status: 'CLOSED', decisionSummary }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-    setFlags(prev => prev.filter(f => f.id !== id))
-  }
+  const cards = [
+    { label: 'Active Organizations', value: stats.orgs, href: '/admin/organizations' },
+    { label: 'Pending Org Applications', value: stats.pendingApps, href: '/admin/applications' },
+    { label: 'Open Flags', value: stats.openFlags, href: '/admin/flags' },
+  ]
 
   return (
-    <main>
-      <h1>Admin Dashboard</h1>
-
-      <section>
-        <h2>Organization Applications</h2>
-        <ul>
-          {applications.map(app => (
-            <li key={app.id}>
-              {app.state}
-              <button onClick={() => reviewApplication(app.id, 'APPROVED')}>Approve</button>
-              <button onClick={() => reviewApplication(app.id, 'REJECTED')}>Reject</button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2>Flagged Content</h2>
-        <ul>
-          {flags.map(flag => (
-            <li key={flag.id}>
-              {flag.reason} — {flag.status}
-              <button onClick={() => resolveFlag(flag.id, 'Reviewed and resolved')}>Resolve</button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+    <AdminShell>
+      <h1 className={`${theme.heading} mb-1`}>Admin Dashboard</h1>
+      <p className={`${theme.subheading} mb-8 text-sm`}>Oversee organizations, applications, and flagged content.</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {cards.map(({ label, value, href }) => (
+          <a key={href} href={href} className={`${theme.card} hover:border-[#8C1D40] transition-colors`}>
+            <p className="text-3xl font-bold text-[#8C1D40]">{value}</p>
+            <p className="text-sm text-zinc-600 mt-1">{label}</p>
+          </a>
+        ))}
+      </div>
+    </AdminShell>
   )
 }

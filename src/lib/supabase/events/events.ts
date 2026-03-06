@@ -10,23 +10,46 @@ export interface Event {
   end_at: string
   location: string | null
   capacity: number | null
+  is_free: boolean | null
   registration_cutoff_at: string | null
   status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'COMPLETED'
   category: string | null
   image_url: string | null
   created_at: string
   updated_at: string
+  registration_count?: number
 }
 
 export async function getEvents(): Promise<Event[]> {
   const { data, error } = await supabase
     .from('events')
-    .select('*, organizations(name)')
+    .select('*, organizations(name), event_registrations(count)')
     .eq('status', 'PUBLISHED')
+    .gte('end_at', new Date().toISOString())
     .order('start_at')
 
   if (error) throw error
-  return (data as any[]).map(e => ({ ...e, org_name: e.organizations?.name ?? null }))
+  return (data as any[]).map(e => ({
+    ...e,
+    org_name: e.organizations?.name ?? null,
+    registration_count: e.event_registrations?.[0]?.count ?? 0,
+  }))
+}
+
+export async function getPastEvents(): Promise<Event[]> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*, organizations(name), event_registrations(count)')
+    .eq('status', 'PUBLISHED')
+    .lt('end_at', new Date().toISOString())
+    .order('start_at', { ascending: false })
+
+  if (error) throw error
+  return (data as any[]).map(e => ({
+    ...e,
+    org_name: e.organizations?.name ?? null,
+    registration_count: e.event_registrations?.[0]?.count ?? 0,
+  }))
 }
 
 export async function getEventById(id: string): Promise<Event> {

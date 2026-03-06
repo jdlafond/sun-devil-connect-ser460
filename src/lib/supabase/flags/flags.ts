@@ -14,6 +14,21 @@ export interface ContentFlag {
 export async function createFlag(flag: Omit<ContentFlag, 'id' | 'created_at' | 'status'>): Promise<ContentFlag> {
   const { data, error } = await supabase.from('content_flags').insert(flag).select().single()
   if (error) throw error
+
+  // Notify all admins
+  const { data: admins } = await supabase.from('users').select('id').eq('role', 'ADMIN')
+  if (admins && admins.length > 0) {
+    await supabase.from('notifications').insert(
+      admins.map(a => ({
+        user_id: a.id,
+        type: 'CONTENT_FLAGGED',
+        title: `New ${flag.target_type.toLowerCase()} report`,
+        message: flag.reason,
+        data: { target_type: flag.target_type, target_id: flag.target_id, flag_id: data.id },
+      }))
+    )
+  }
+
   return data
 }
 

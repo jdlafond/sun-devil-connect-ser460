@@ -7,44 +7,26 @@ import { useEffect, useRef, useState } from 'react'
 import { useUser } from '@/src/lib/supabase/auth/UserProvider'
 import { signOutUser } from '@/src/lib/supabase/auth/auth'
 import { theme } from '@/src/styles/theme'
-import { LayoutDashboard, Building2, CalendarDays, UserCircle, ShieldCheck, Bell } from 'lucide-react'
-import { getOrganizationApplications } from '@/src/lib/supabase/applications/applications'
-import { getOrganizations, Organization } from '@/src/lib/supabase/organizations/organizations'
+import { LayoutDashboard, Building2, Flag, UserCircle, Bell } from 'lucide-react'
 import { getNotifications, markAsRead, markAllAsRead, Notification } from '@/src/lib/supabase/notifications/notifications'
 import { subscribeToNotifications } from '@/src/lib/realtime'
 
-const navLinks = [
-  { href: '/student', label: 'Home' },
-  { href: '/student/organizations', label: 'Organizations' },
-  { href: '/student/events', label: 'Events' },
-]
-
 const sidebarLinks = [
-  { href: '/student', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/student/my-organizations', label: 'My Organizations', icon: Building2 },
-  { href: '/student/my-events', label: 'My Events', icon: CalendarDays },
-  { href: '/student/profile', label: 'Profile', icon: UserCircle },
+  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/applications', label: 'Applications', icon: Flag },
+  { href: '/admin/flags', label: 'Flagged Content', icon: Flag },
+  { href: '/admin/organizations', label: 'Manage Organizations', icon: Building2 },
+  { href: '/admin/profile', label: 'Profile', icon: UserCircle },
 ]
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { user } = useUser()
   const router = useRouter()
-  const [myClubs, setMyClubs] = useState<Organization[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [showNotifs, setShowNotifs] = useState(false)
   const bellRef = useRef<HTMLDivElement>(null)
   const unread = notifications.filter(n => !n.read).length
-
-  useEffect(() => {
-    if ((user as any)?.role !== 'ORGANIZER') return
-    Promise.all([getOrganizationApplications(), getOrganizations()]).then(([apps, orgs]) => {
-      const myNames = apps
-        .filter(a => a.submitted_by === user!.id && a.state === 'APPROVED')
-        .map(a => (a.proposed_organization as any).name)
-      setMyClubs(orgs.filter(o => myNames.includes(o.name)))
-    }).catch(() => {})
-  }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -81,21 +63,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top Navbar */}
       <nav className={`${theme.nav} z-10`} style={{ background: theme.navBg }}>
-        <Link href="/student" className="flex items-center gap-3">
+        <Link href="/admin" className="flex items-center gap-3">
           <Image src="/arizona-state-university-logo.png" alt="ASU Logo" width={100} height={33} />
-          <span className="text-white font-bold text-xl">Sun Devil Connect</span>
+          <span className="text-white font-bold text-xl">Sun Devil Connect — Admin</span>
         </Link>
-        <div className="flex items-center gap-6">
-          {navLinks.map(link => (
-            <Link key={link.href} href={link.href}
-              className={pathname === link.href ? theme.navLinkActive : theme.navLink}>
-              {link.label}
-            </Link>
-          ))}
-          <span className="text-white/50">|</span>
-
+        <div className="flex items-center gap-4">
           {/* Notification Bell */}
           <div ref={bellRef} className="relative">
             <button onClick={() => setShowNotifs(p => !p)} className="relative text-white/70 hover:text-white">
@@ -106,7 +79,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </span>
               )}
             </button>
-
             {showNotifs && (
               <div className="absolute right-0 top-8 w-80 bg-white rounded-xl shadow-xl border border-zinc-200 z-50 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
@@ -119,8 +91,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   {notifications.length === 0 ? (
                     <p className="text-sm text-zinc-500 px-4 py-6 text-center">No notifications</p>
                   ) : notifications.map(n => (
-                    <div key={n.id}
-                      onClick={() => handleMarkRead(n.id)}
+                    <div key={n.id} onClick={() => handleMarkRead(n.id)}
                       className={`px-4 py-3 border-b border-zinc-50 cursor-pointer hover:bg-zinc-50 transition-colors ${!n.read ? 'bg-[#8C1D40]/5' : ''}`}>
                       <p className={`text-sm font-medium ${!n.read ? 'text-[#8C1D40]' : 'text-zinc-700'}`}>{n.title}</p>
                       {n.message && <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{n.message}</p>}
@@ -131,14 +102,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
-
           <span className="text-white/70 text-sm">{(user as any)?.display_name ?? user?.email}</span>
-          <button onClick={handleSignOut} className="text-sm text-white/70 hover:text-white">Sign Out</button>
+          <button onClick={handleSignOut} className="text-sm text-white/70 hover:text-white cursor-pointer">Sign Out</button>
         </div>
       </nav>
 
       <div className="flex flex-1">
-        {/* Left Sidebar */}
         <aside className="w-56 bg-white border-r border-zinc-200 flex flex-col py-6 px-4 gap-1 shrink-0">
           {sidebarLinks.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
@@ -152,27 +121,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             )
           })}
-          {(user as any)?.role === 'ORGANIZER' && myClubs.length > 0 && (
-            <>
-              <p className="text-xs font-semibold text-zinc-400 uppercase px-4 mt-4 mb-1">My Clubs</p>
-              {myClubs.map(club => {
-                const href = `/student/organizer/club/${club.id}`
-                const active = pathname.startsWith(href)
-                return (
-                  <Link key={club.id} href={href}
-                    className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      active ? 'bg-[#8C1D40] text-white' : 'text-zinc-700 hover:bg-zinc-100'
-                    }`}>
-                    <ShieldCheck size={18} color={active ? 'white' : '#8C1D40'} />
-                    {club.name}
-                  </Link>
-                )
-              })}
-            </>
-          )}
         </aside>
-
-        {/* Main Content */}
         <main className="flex-1 bg-zinc-50 p-8">{children}</main>
       </div>
     </div>

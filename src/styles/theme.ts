@@ -8,6 +8,6 @@ export const theme = {
   subheading: 'text-zinc-600',
   card: 'bg-white rounded-xl border border-zinc-200 p-6 shadow-sm hover:shadow-md transition-shadow',
   input: 'w-full rounded-full border border-zinc-300 px-5 py-3 text-sm text-black outline-none focus:border-[#8C1D40] transition-colors placeholder:text-zinc-500',
-  btnPrimary: 'w-full bg-[#8C1D40] text-white font-semibold py-3 rounded-full hover:bg-[#6e1632] transition-colors',
+  btnPrimary: 'w-full bg-[#8C1D40] text-white font-semibold py-3 rounded-full hover:bg-[#6e1632] transition-colors cursor-pointer',
   link: 'text-sm font-semibold text-[#8C1D40] hover:underline',
 }

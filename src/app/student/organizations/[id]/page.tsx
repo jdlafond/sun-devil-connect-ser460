@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
-import Link from 'next/link'
 import AppShell from '../../../components/AppShell'
 import { supabase } from '@/src/lib/supabase/supabase'
 import { getOrganizationById, Organization } from '@/src/lib/supabase/organizations/organizations'
+import FlagButton from '../../../components/FlagButton'
 
 interface Announcement {
   id: string
@@ -27,7 +27,13 @@ interface Event {
 
 interface Leader {
   role: string
-  users: { id: string; full_name: string; avatar_url: string | null }
+  users: { id: string; display_name: string; avatar_url: string | null }
+}
+
+interface Member {
+  user_id: string
+  role: string
+  users: { display_name: string }
 }
 
 export default function StudentOrganizationPage() {
@@ -36,20 +42,23 @@ export default function StudentOrganizationPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [leaders, setLeaders] = useState<Leader[]>([])
+  const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const [orgData, { data: ann }, { data: evts }, { data: ldrs }] = await Promise.all([
+      const [orgData, { data: ann }, { data: evts }, { data: ldrs }, { data: mems }] = await Promise.all([
         getOrganizationById(id),
         supabase.from('announcements').select('id, title, content, created_at').eq('org_id', id).order('created_at', { ascending: false }).limit(5),
         supabase.from('events').select('id, title, description, start_at, end_at, location, category').eq('org_id', id).eq('status', 'PUBLISHED').gte('start_at', new Date().toISOString()).order('start_at'),
-        supabase.from('organization_members').select('role, users(id, full_name, avatar_url)').eq('org_id', id).neq('role', 'MEMBER'),
+        supabase.from('organization_members').select('role, users(id, display_name, avatar_url)').eq('org_id', id).neq('role', 'MEMBER'),
+        supabase.from('organization_members').select('user_id, role, users(display_name)').eq('org_id', id),
       ])
       setOrg(orgData)
       setAnnouncements(ann ?? [])
       setEvents(evts ?? [])
       setLeaders((ldrs as unknown as Leader[]) ?? [])
+      setMembers((mems as unknown as Member[]) ?? [])
       setLoading(false)
     }
     load().catch(() => setLoading(false))
@@ -73,11 +82,9 @@ export default function StudentOrganizationPage() {
             ))}
           </div>
           {org.contact_email && <p className="text-sm text-zinc-500 mt-2">{org.contact_email}</p>}
+          <div className="mt-3"><FlagButton targetType="ORGANIZATION" targetId={org.id} /></div>
         </div>
-        <a
-          href={`mailto:${org.contact_email}`}
-          className="shrink-0 px-5 py-2 bg-[#8C1D40] text-white text-sm font-semibold rounded-full hover:bg-[#380111] transition-colors"
-        >
+        <a href={`mailto:${org.contact_email}`} className="shrink-0 px-5 py-2 bg-[#8C1D40] text-white text-sm font-semibold rounded-full hover:bg-[#380111] transition-colors">
           Contact
         </a>
       </div>
@@ -95,7 +102,10 @@ export default function StudentOrganizationPage() {
               <ul className="space-y-4">
                 {announcements.map(a => (
                   <li key={a.id} className="bg-white rounded-xl border border-zinc-200 p-4">
-                    <p className="font-semibold text-zinc-800">{a.title}</p>
+                    <div className="flex items-start justify-between">
+                      <p className="font-semibold text-zinc-800">{a.title}</p>
+                      <FlagButton targetType="ANNOUNCEMENT" targetId={a.id} />
+                    </div>
                     {a.content && <p className="text-sm text-zinc-600 mt-1">{a.content}</p>}
                     <p className="text-xs text-zinc-400 mt-2">{new Date(a.created_at).toLocaleDateString()}</p>
                   </li>
@@ -110,7 +120,10 @@ export default function StudentOrganizationPage() {
               <ul className="space-y-4">
                 {events.map(e => (
                   <li key={e.id} className="bg-white rounded-xl border border-zinc-200 p-4">
-                    <p className="font-semibold text-zinc-800">{e.title}</p>
+                    <div className="flex items-start justify-between">
+                      <p className="font-semibold text-zinc-800">{e.title}</p>
+                      <FlagButton targetType="EVENT" targetId={e.id} />
+                    </div>
                     <p className="text-xs text-zinc-500 mt-1">{new Date(e.start_at).toLocaleString()} — {new Date(e.end_at).toLocaleString()}</p>
                     {e.location && <p className="text-xs text-zinc-500">{e.location}</p>}
                     {e.description && <p className="text-sm text-zinc-600 mt-2 line-clamp-2">{e.description}</p>}
@@ -121,27 +134,45 @@ export default function StudentOrganizationPage() {
           </section>
         </div>
 
-        <aside>
-          <h2 className="text-xl font-bold text-[#8C1D40] mb-3">Leadership</h2>
-          {leaders.length === 0 ? <p className="text-zinc-500 text-sm">No leadership listed.</p> : (
-            <ul className="space-y-3">
-              {leaders.map((l, i) => (
-                <li key={i} className="flex items-center gap-3 bg-white rounded-xl border border-zinc-200 p-3">
-                  {l.users.avatar_url ? (
-                    <Image src={l.users.avatar_url} alt={l.users.full_name} width={36} height={36} className="rounded-full object-cover" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-500 text-sm font-bold">
-                      {l.users.full_name?.[0]}
+        <aside className="space-y-8">
+          <section>
+            <h2 className="text-xl font-bold text-[#8C1D40] mb-3">Leadership</h2>
+            {leaders.length === 0 ? <p className="text-zinc-500 text-sm">No leadership listed.</p> : (
+              <ul className="space-y-3">
+                {leaders.map((l, i) => (
+                  <li key={i} className="flex items-center gap-3 bg-white rounded-xl border border-zinc-200 p-3">
+                    {l.users.avatar_url ? (
+                      <Image src={l.users.avatar_url} alt={l.users.display_name} width={36} height={36} className="rounded-full object-cover" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-500 text-sm font-bold">
+                        {l.users.display_name?.[0]}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-800">{l.users.display_name}</p>
+                      <p className="text-xs text-zinc-500">{l.role}</p>
                     </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-800">{l.users.full_name}</p>
-                    <p className="text-xs text-zinc-500">{l.role}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-[#8C1D40] mb-3">Members ({members.length})</h2>
+            {members.length === 0 ? <p className="text-zinc-500 text-sm">No members yet.</p> : (
+              <ul className="space-y-2">
+                {members.map((m, i) => (
+                  <li key={i} className="flex items-center gap-2 bg-white rounded-xl border border-zinc-200 p-3">
+                    <div className="w-7 h-7 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-500 text-xs font-bold shrink-0">
+                      {m.users?.display_name?.[0]}
+                    </div>
+                    <p className="text-sm text-zinc-700">{m.users?.display_name}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </aside>
       </div>
     </AppShell>

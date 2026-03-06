@@ -6,6 +6,8 @@ import AppShell from '../../components/AppShell'
 import { getOrganizations, Organization } from '@/src/lib/supabase/organizations/organizations'
 import { theme } from '@/src/styles/theme'
 import OrgLink from '../../components/OrgLink'
+import JoinOrgSheet from '../../components/JoinOrgSheet'
+import CreateOrgSheet from '../../components/CreateOrgSheet'
 
 const CATEGORIES = ['Academic', 'Social', 'Greek Life', 'Cultural', 'Sports', 'Arts', 'Service', 'Professional']
 
@@ -15,6 +17,8 @@ export default function StudentOrganizationsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     getOrganizations()
@@ -41,7 +45,10 @@ export default function StudentOrganizationsPage() {
 
   return (
     <AppShell>
-      <h1 className={`${theme.heading} mb-1`}>Organizations</h1>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className={theme.heading}>Organizations</h1>
+        <button onClick={() => setCreateOpen(true)} className="px-5 py-2 bg-[#8C1D40] text-white text-sm font-semibold rounded-full hover:bg-[#6e1632] transition-colors cursor-pointer">+ Start an Org</button>
+      </div>
       <p className={`${theme.subheading} mb-6 text-sm`}>Find your community at ASU</p>
 
       <input
@@ -92,12 +99,17 @@ export default function StudentOrganizationsPage() {
                     <span key={cat} className="px-2 py-1 bg-zinc-100 text-zinc-700 text-xs rounded-full">{cat}</span>
                   ))}
                 </div>
-                <OrgLink id={org.id} className={theme.link}>View Details →</OrgLink>
+                <div className="flex items-center justify-between mt-2">
+                  <OrgLink id={org.id} className={theme.link}>View Details →</OrgLink>
+                  <button onClick={() => setSelectedOrg(org)} className="px-5 py-2 bg-[#8C1D40] text-white text-sm font-semibold rounded-full hover:bg-[#6e1632] transition-colors cursor-pointer">Join</button>
+                </div>
               </div>
             ))}
           </div>
         </>
       )}
+      <JoinOrgSheet org={selectedOrg} onClose={() => setSelectedOrg(null)} />
+      <CreateOrgSheet open={createOpen} onClose={() => setCreateOpen(false)} />
     </AppShell>
   )
 }

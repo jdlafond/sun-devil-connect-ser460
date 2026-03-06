@@ -19,7 +19,10 @@ export async function getUserById(id: string): Promise<UserProfile> {
   return data
 }
 
-export async function updateUser(id: string, updates: Partial<Omit<UserProfile, 'id' | 'email' | 'created_at' | 'updated_at'>>): Promise<UserProfile> {
+export async function updateUserRole(id: string, role: UserProfile['role']): Promise<void> {
+  const { error } = await supabase.from('users').update({ role }).eq('id', id)
+  if (error) throw error
+}
   const { data, error } = await supabase.from('users').update(updates).eq('id', id).select().single()
   if (error) throw error
   return data

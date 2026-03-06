@@ -59,3 +59,21 @@ export async function leaveOrganization(userId: string, orgId: string): Promise<
     .eq('org_id', orgId)
   if (error) throw error
 }
+
+export async function getOrgMembers(orgId: string): Promise<{ id: string; user_id: string; role: string; joined_at: string; users: { display_name: string; email: string } }[]> {
+  const { data, error } = await supabase
+    .from('organization_members')
+    .select('*, users(display_name, email)')
+    .eq('org_id', orgId)
+  if (error) throw error
+  return data as any[]
+}
+
+export async function removeOrgMember(userId: string, orgId: string): Promise<void> {
+  const { error } = await supabase
+    .from('organization_members')
+    .delete()
+    .eq('user_id', userId)
+    .eq('org_id', orgId)
+  if (error) throw error
+}
